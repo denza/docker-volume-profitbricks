@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/docker/machine/libmachine/log"
 	"io/ioutil"
 	"os/exec"
 	"strings"
@@ -21,8 +22,8 @@ func (m Utilities) MountVolume(volumeName string, mountpoint string) error {
 	cmd := exec.Command("lsblk", "-o", "MOUNTPOINT,NAME", "-J")
 	cmd.Stdout = &stdOut
 	cmd.Stderr = &stdErr
-
 	err := cmd.Run()
+	log.Infof("Mount stdout: %s", stdOut.String())
 
 	if err != nil {
 		return fmt.Errorf("Error occured while mounting %s: %s", volumeName, stdErr.String())
@@ -36,9 +37,10 @@ func (m Utilities) UnmountVolume(mountPoint string) error {
 	cmd.Stdout = &stdOut
 	cmd.Stderr = &stdErr
 	err := cmd.Run()
+	log.Infof("Umount stdout: %s", stdOut.String())
 
 	if err != nil {
-		return fmt.Errorf("Error occured while unmounting %s: %s", volumeName, stdErr.String())
+		return fmt.Errorf("Error occured while unmounting %s: %s", mountPoint, stdErr.String())
 	}
 	return err
 }
