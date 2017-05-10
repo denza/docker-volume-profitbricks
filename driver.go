@@ -209,6 +209,9 @@ func (d *Driver) List(r volume.Request) volume.Response {
 func (d *Driver) Get(r volume.Request) volume.Response {
 	log.Info("Getting a Volume")
 
+	if d.volumes[r.Name] == nil {
+		return volume.Response{}
+	}
 	vol := &volume.Volume{
 		Name:       d.volumes[r.Name].deviceName,
 		Mountpoint: d.volumes[r.Name].mountPoint,
