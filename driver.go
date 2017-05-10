@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/go-plugins-helpers/volume"
@@ -235,7 +236,8 @@ func (d *Driver) Remove(r volume.Request) volume.Response {
 	}
 	log.Infof("Request: %s", r)
 	log.Infof("Removing volume %s ", r.Name)
-	log.Info("Volumes: ", d.volumes)
+	jsn, _ := json.Marshal(d.volumes)
+	log.Info("Volumes: ", jsn)
 	log.Info("Volume: ", vol)
 	log.Infof("Removing volume with parameters: %s, %s, %s", d.datacenterId, d.serverId, vol.volumeId)
 	resp := profitbricks.DetachVolume(d.datacenterId, d.serverId, vol.volumeId)
