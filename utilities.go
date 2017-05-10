@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/docker/machine/libmachine/log"
+	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
 	"os/exec"
 	"strings"
