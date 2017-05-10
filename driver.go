@@ -194,10 +194,6 @@ func (d *Driver) Unmount(r volume.UnmountRequest) volume.Response {
 func (d *Driver) List(r volume.Request) volume.Response {
 	d.Lock()
 	defer d.Unlock()
-	return volume.Response{}
-}
-
-func (d *Driver) Get(r volume.Request) volume.Response {
 	volumes := []*volume.Volume{}
 	log.Info("Getting a Volume")
 
@@ -208,6 +204,17 @@ func (d *Driver) Get(r volume.Request) volume.Response {
 		})
 	}
 	return volume.Response{Volumes: volumes}
+}
+
+func (d *Driver) Get(r volume.Request) volume.Response {
+	log.Info("Getting a Volume")
+
+	vol := &volume.Volume{
+		Name:       d.volumes[r.Name].deviceName,
+		Mountpoint: d.volumes[r.Name].mountPoint,
+	}
+
+	return volume.Response{Volume: vol}
 }
 
 func (d *Driver) Remove(r volume.Request) volume.Response {
@@ -252,6 +259,7 @@ func (d *Driver) Path(r volume.Request) volume.Response {
 }
 
 func (d *Driver) Capabilities(r volume.Request) volume.Response {
+	log.Infof("[Capabilities]: %+v", r)
 	return volume.Response{Capabilities: volume.Capability{Scope: "profitbricks/docker-volume-profitbricks"}}
 }
 
@@ -261,8 +269,8 @@ func (d *Driver) waitTillProvisioned(path string) error {
 
 	for i := 0; i < waitCount; i++ {
 		request := profitbricks.GetRequestStatus(path)
-		log.Info("Request status:", request.Metadata.Status)
-		log.Info("Request status path:", path)
+		log.Infof("Request status: %s", request.Metadata.Status)
+		log.Infof("Request status path: %s", path)
 
 		if request.Metadata.Status == "DONE" {
 			return nil
