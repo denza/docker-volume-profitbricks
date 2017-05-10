@@ -159,6 +159,9 @@ func (d *Driver) Create(r volume.Request) volume.Response {
 		deviceName: volumeName,
 	}
 
+	log.Info("Volumes: ", d.volumes)
+	log.Info("Volume: ", d.volumes[r.Name])
+
 	return volume.Response{}
 }
 
