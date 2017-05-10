@@ -233,10 +233,10 @@ func (d *Driver) Remove(r volume.Request) volume.Response {
 			break
 		}
 	}
-
+	log.Infof("Request: %s", r)
 	log.Infof("Removing volume %s ", r.Name)
 	log.Info("Volumes: ", d.volumes)
-	log.Info("Volume: ", d.volumes[r.Name])
+	log.Info("Volume: ", vol)
 	log.Infof("Removing volume with parameters: %s, %s, %s", d.datacenterId, d.serverId, vol.volumeId)
 	resp := profitbricks.DetachVolume(d.datacenterId, d.serverId, vol.volumeId)
 	if resp.StatusCode > 299 {
