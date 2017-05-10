@@ -165,6 +165,7 @@ func (d *Driver) Create(r volume.Request) volume.Response {
 func (d *Driver) Mount(r volume.MountRequest) volume.Response {
 	d.Lock()
 	defer d.Unlock()
+	log.Info("Mounting Volume")
 	err := d.utilities.MountVolume(r.Name, d.volumes[r.Name].mountPoint)
 	if err != nil {
 		log.Error(err.Error())
@@ -177,6 +178,7 @@ func (d *Driver) Mount(r volume.MountRequest) volume.Response {
 func (d *Driver) Unmount(r volume.UnmountRequest) volume.Response {
 	d.Lock()
 	defer d.Unlock()
+	log.Info("Unmounting Volume")
 
 	err := d.utilities.UnmountVolume(d.volumes[r.Name].mountPoint)
 	if err != nil {
@@ -194,6 +196,7 @@ func (d *Driver) List(r volume.Request) volume.Response {
 
 func (d *Driver) Get(r volume.Request) volume.Response {
 	volumes := []*volume.Volume{}
+	log.Info("Getting a Volume")
 
 	for name, state := range d.volumes {
 		volumes = append(volumes, &volume.Volume{
@@ -207,6 +210,7 @@ func (d *Driver) Get(r volume.Request) volume.Response {
 func (d *Driver) Remove(r volume.Request) volume.Response {
 	d.Lock()
 	defer d.Unlock()
+	log.Info("Removing a Volume")
 
 	resp := profitbricks.DetachVolume(d.datacenterId, d.serverId, d.volumes[r.Name].volumeId)
 	if resp.StatusCode > 299 {
