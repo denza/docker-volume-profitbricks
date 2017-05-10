@@ -154,7 +154,7 @@ func (d *Driver) Create(r volume.Request) volume.Response {
 	}
 
 	d.volumes[r.Name] = &VolumeState{
-		volumeId:   vol.Id,
+		volumeId:   volumeId,
 		mountPoint: volumePath,
 		deviceName: volumeName,
 	}
@@ -228,7 +228,7 @@ func (d *Driver) Remove(r volume.Request) volume.Response {
 
 	vol := &VolumeState{}
 	for _, v := range d.volumes {
-		if v.deviceName == r.Name {
+		if v.mountPoint == r.Name {
 			vol = v
 			break
 		}
