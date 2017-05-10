@@ -236,8 +236,8 @@ func (d *Driver) Remove(r volume.Request) volume.Response {
 	}
 	log.Infof("Request: %s", r)
 	log.Infof("Removing volume %s ", r.Name)
-	jsn, _ := json.Marshal(d.volumes)
-	log.Info("Volumes: ", jsn)
+	jsn, _ := json.MarshalIndent(d.volumes, "", "\t")
+	log.Info("Volumes: ", string(jsn))
 	log.Info("Volume: ", vol)
 	log.Infof("Removing volume with parameters: %s, %s, %s", d.datacenterId, d.serverId, vol.volumeId)
 	resp := profitbricks.DetachVolume(d.datacenterId, d.serverId, vol.volumeId)
