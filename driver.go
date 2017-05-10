@@ -227,10 +227,16 @@ func (d *Driver) Get(r volume.Request) volume.Response {
 func (d *Driver) Remove(r volume.Request) volume.Response {
 	d.Lock()
 	defer d.Unlock()
+	log.Info("Iterating throug map")
 
 	vol := &VolumeState{}
-	for _, v := range d.volumes {
-		if v.MountPoint == r.Name {
+	var key string
+	for k, _ := range d.volumes {
+		v := d.volumes[k]
+		log.Infof("Key %s", k)
+		log.Infof("v.MountPoint == r.Name ", v.MountPoint == r.Name)
+		if v.DeviceName == r.Name {
+			key = k
 			vol = v
 			break
 		}
@@ -254,7 +260,7 @@ func (d *Driver) Remove(r volume.Request) volume.Response {
 		return volume.Response{Err: err.Error()}
 	}
 
-	resp = profitbricks.DeleteVolume(d.datacenterId, d.volumes[r.Name].VolumeId)
+	resp = profitbricks.DeleteVolume(d.datacenterId, vol.VolumeId)
 	if resp.StatusCode > 299 {
 		log.Errorf("failed to create metadata file '%v' for volume '%v'", d.metadataPath, r.Name)
 		return volume.Response{Err: string(resp.Body)}
@@ -264,6 +270,8 @@ func (d *Driver) Remove(r volume.Request) volume.Response {
 	if err != nil {
 		return volume.Response{Err: err.Error()}
 	}
+
+	delete(d.volumes, key)
 
 	return volume.Response{}
 }
@@ -290,8 +298,8 @@ func (d *Driver) waitTillProvisioned(path string) error {
 
 	for i := 0; i < waitCount; i++ {
 		request := profitbricks.GetRequestStatus(path)
-		log.Infof("Request status: %s", request.Metadata.Status)
-		log.Infof("Request status path: %s", path)
+		log.Debugf("Request status: %s", request.Metadata.Status)
+		log.Debugf("Request status path: %s", path)
 
 		if request.Metadata.Status == "DONE" {
 			return nil
@@ -300,7 +308,7 @@ func (d *Driver) waitTillProvisioned(path string) error {
 
 			return fmt.Errorf("Request failed with following error: %s", request.Metadata.Message)
 		}
-		time.Sleep(10 * time.Second)
+		time.Sleep(5 * time.Second)
 		i++
 	}
 	return fmt.Errorf("Timeout has expired %s", "")
