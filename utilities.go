@@ -17,8 +17,17 @@ func NewUtilities() *Utilities {
 }
 
 func (m Utilities) MountVolume(volumeName string, mountpoint string) error {
-	cmd := exec.Command("mount", volumeName, mountpoint)
-	return cmd.Run()
+	var stdOut, stdErr bytes.Buffer
+	cmd := exec.Command("lsblk", "-o", "MOUNTPOINT,NAME", "-J")
+	cmd.Stdout = &stdOut
+	cmd.Stderr = &stdErr
+
+	err := cmd.Run()
+
+	if err != nil {
+		return fmt.Errorf("Error occured while mounting %s: %s", volumeName, stdErr.String())
+	}
+	return err
 }
 
 func (m Utilities) UnmountVolume(mountPoint string) error {
