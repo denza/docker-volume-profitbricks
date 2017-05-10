@@ -21,7 +21,7 @@ func (m Utilities) MountVolume(volumeName string, mountPoint string) error {
 	log.Infof("Mounting volume %s at %s", volumeName, mountPoint)
 
 	var stdOut, stdErr bytes.Buffer
-	cmd := exec.Command("lsblk", "-o", "MOUNTPOINT,NAME", "-J")
+	cmd := exec.Command("mount", volumeName, mountPoint)
 	cmd.Stdout = &stdOut
 	cmd.Stderr = &stdErr
 	err := cmd.Run()

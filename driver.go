@@ -169,8 +169,7 @@ func (d *Driver) Mount(r volume.MountRequest) volume.Response {
 	d.Lock()
 	defer d.Unlock()
 	log.Info("Mounting Volume")
-	toMount := d.volumes[r.Name]
-	err := d.utilities.MountVolume(toMount.mountPoint, d.volumes[r.Name].mountPoint)
+	err := d.utilities.MountVolume(r.Name, d.volumes[r.Name].mountPoint)
 	if err != nil {
 		log.Error(err.Error())
 		return volume.Response{Err: err.Error()}
@@ -184,7 +183,7 @@ func (d *Driver) Unmount(r volume.UnmountRequest) volume.Response {
 	defer d.Unlock()
 	log.Info("Unmounting Volume")
 
-	err := d.utilities.UnmountVolume(d.volumes[r.Name].mountPoint)
+	err := d.utilities.UnmountVolume(r.Name)
 	if err != nil {
 		log.Error("Error occured while unmounting volume", err.Error())
 		return volume.Response{Err: err.Error()}
@@ -224,11 +223,20 @@ func (d *Driver) Get(r volume.Request) volume.Response {
 func (d *Driver) Remove(r volume.Request) volume.Response {
 	d.Lock()
 	defer d.Unlock()
+
+	vol := VolumeState{}
+	for _, v := range d.volumes {
+		if v.deviceName == r.Name {
+			vol = v
+			break
+		}
+	}
+
 	log.Infof("Removing volume %s ", r.Name)
 	log.Info("Volumes: ", d.volumes)
 	log.Info("Volume: ", d.volumes[r.Name])
-	log.Infof("Removing volume with parameters: %s, %s, %s", d.datacenterId, d.serverId, d.volumes[r.Name].volumeId)
-	resp := profitbricks.DetachVolume(d.datacenterId, d.serverId, d.volumes[r.Name].volumeId)
+	log.Infof("Removing volume with parameters: %s, %s, %s", d.datacenterId, d.serverId, vol.volumeId)
+	resp := profitbricks.DetachVolume(d.datacenterId, d.serverId, vol.volumeId)
 	if resp.StatusCode > 299 {
 		log.Errorf("failed to create metadata file '%v' for volume '%v'", d.metadataPath, r.Name)
 		return volume.Response{Err: string(resp.Body)}
