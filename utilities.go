@@ -17,8 +17,8 @@ func NewUtilities() *Utilities {
 	return &Utilities{}
 }
 
-func (m Utilities) MountVolume(volumeName string, mountpoint string) error {
-	log.Infof("Mounting volume %s at %s", volumeName, mountpoint)
+func (m Utilities) MountVolume(volumeName string, mountPoint string) error {
+	log.Infof("Mounting volume %s at %s", volumeName, mountPoint)
 
 	var stdOut, stdErr bytes.Buffer
 	cmd := exec.Command("lsblk", "-o", "MOUNTPOINT,NAME", "-J")
@@ -34,6 +34,7 @@ func (m Utilities) MountVolume(volumeName string, mountpoint string) error {
 }
 
 func (m Utilities) UnmountVolume(mountPoint string) error {
+	log.Infof("Unmounting volume %s ", mountPoint)
 	var stdOut, stdErr bytes.Buffer
 	cmd := exec.Command("umount", mountPoint)
 	cmd.Stdout = &stdOut

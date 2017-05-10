@@ -169,7 +169,8 @@ func (d *Driver) Mount(r volume.MountRequest) volume.Response {
 	d.Lock()
 	defer d.Unlock()
 	log.Info("Mounting Volume")
-	err := d.utilities.MountVolume(r.Name, d.volumes[r.Name].mountPoint)
+	toMount := d.volumes[r.Name]
+	err := d.utilities.MountVolume(toMount.mountPoint, d.volumes[r.Name].mountPoint)
 	if err != nil {
 		log.Error(err.Error())
 		return volume.Response{Err: err.Error()}
