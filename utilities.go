@@ -31,8 +31,16 @@ func (m Utilities) MountVolume(volumeName string, mountpoint string) error {
 }
 
 func (m Utilities) UnmountVolume(mountPoint string) error {
+	var stdOut, stdErr bytes.Buffer
 	cmd := exec.Command("umount", mountPoint)
-	return cmd.Run()
+	cmd.Stdout = &stdOut
+	cmd.Stderr = &stdErr
+	err := cmd.Run()
+
+	if err != nil {
+		return fmt.Errorf("Error occured while unmounting %s: %s", volumeName, stdErr.String())
+	}
+	return err
 }
 
 func (m Utilities) FormatVolume(volumeName string) error {
