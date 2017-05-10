@@ -58,7 +58,6 @@ func ProfitBricksDriver(utilities *Utilities, args CommandLineArgs) (*Driver, er
 		log.Error(err)
 		return nil, err
 	}
-	serverId = strings.Trim(serverId, "")
 
 	log.Info("Server ID:", strings.ToLower(serverId))
 

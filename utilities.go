@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os/exec"
+	"strings"
 )
 
 type Utilities struct {
@@ -33,7 +34,7 @@ func (m Utilities) FormatVolume(volumeName string) error {
 func (m Utilities) GetServerId() (string, error) {
 	output, err := ioutil.ReadFile("/sys/devices/virtual/dmi/id/product_uuid")
 	toReturn := string(output)
-	return toReturn[0:37], err
+	return strings.TrimSpace(toReturn), err
 }
 
 func (m Utilities) GetDeviceName() (string, error) {
