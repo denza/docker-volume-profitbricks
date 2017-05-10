@@ -34,9 +34,9 @@ type Driver struct {
 }
 
 type VolumeState struct {
-	volumeId   string
-	mountPoint string
-	deviceName string
+	VolumeId   string
+	MountPoint string
+	DeviceName string
 }
 
 func ProfitBricksDriver(utilities *Utilities, args CommandLineArgs) (*Driver, error) {
@@ -155,12 +155,13 @@ func (d *Driver) Create(r volume.Request) volume.Response {
 	}
 
 	d.volumes[r.Name] = &VolumeState{
-		volumeId:   volumeId,
-		mountPoint: volumePath,
-		deviceName: volumeName,
+		VolumeId:   volumeId,
+		MountPoint: volumePath,
+		DeviceName: volumeName,
 	}
 
-	log.Info("Volumes: ", d.volumes)
+	jsn, _ := json.MarshalIndent(d.volumes, "", "\t")
+	log.Info("Volumes: ", string(jsn))
 	log.Info("Volume: ", d.volumes[r.Name])
 
 	return volume.Response{}
@@ -172,7 +173,7 @@ func (d *Driver) Mount(r volume.MountRequest) volume.Response {
 	log.Infof("Mounting Volume: %s", r.Name)
 
 	log.Info(d.volumes[r.Name])
-	err := d.utilities.MountVolume(d.volumes[r.Name].deviceName, d.volumes[r.Name].mountPoint)
+	err := d.utilities.MountVolume(d.volumes[r.Name].DeviceName, d.volumes[r.Name].MountPoint)
 	if err != nil {
 		log.Error(err.Error())
 		return volume.Response{Err: err.Error()}
@@ -186,7 +187,7 @@ func (d *Driver) Unmount(r volume.UnmountRequest) volume.Response {
 	defer d.Unlock()
 	log.Info("Unmounting Volume")
 
-	err := d.utilities.UnmountVolume(d.volumes[r.Name].mountPoint)
+	err := d.utilities.UnmountVolume(d.volumes[r.Name].MountPoint)
 	if err != nil {
 		log.Error("Error occured while unmounting volume", err.Error())
 		return volume.Response{Err: err.Error()}
@@ -203,7 +204,7 @@ func (d *Driver) List(r volume.Request) volume.Response {
 	for name, state := range d.volumes {
 		volumes = append(volumes, &volume.Volume{
 			Name:       name,
-			Mountpoint: state.mountPoint,
+			Mountpoint: state.MountPoint,
 		})
 	}
 	return volume.Response{Volumes: volumes}
@@ -216,8 +217,8 @@ func (d *Driver) Get(r volume.Request) volume.Response {
 		return volume.Response{}
 	}
 	vol := &volume.Volume{
-		Name:       d.volumes[r.Name].deviceName,
-		Mountpoint: d.volumes[r.Name].mountPoint,
+		Name:       d.volumes[r.Name].DeviceName,
+		Mountpoint: d.volumes[r.Name].MountPoint,
 	}
 
 	return volume.Response{Volume: vol}
@@ -229,7 +230,7 @@ func (d *Driver) Remove(r volume.Request) volume.Response {
 
 	vol := &VolumeState{}
 	for _, v := range d.volumes {
-		if v.mountPoint == r.Name {
+		if v.MountPoint == r.Name {
 			vol = v
 			break
 		}
@@ -239,8 +240,8 @@ func (d *Driver) Remove(r volume.Request) volume.Response {
 	jsn, _ := json.MarshalIndent(d.volumes, "", "\t")
 	log.Info("Volumes: ", string(jsn))
 	log.Info("Volume: ", vol)
-	log.Infof("Removing volume with parameters: %s, %s, %s", d.datacenterId, d.serverId, vol.volumeId)
-	resp := profitbricks.DetachVolume(d.datacenterId, d.serverId, vol.volumeId)
+	log.Infof("Removing volume with parameters: %s, %s, %s", d.datacenterId, d.serverId, vol.VolumeId)
+	resp := profitbricks.DetachVolume(d.datacenterId, d.serverId, vol.VolumeId)
 	if resp.StatusCode > 299 {
 		log.Errorf("failed to create metadata file '%v' for volume '%v'", d.metadataPath, r.Name)
 		return volume.Response{Err: string(resp.Body)}
@@ -251,7 +252,7 @@ func (d *Driver) Remove(r volume.Request) volume.Response {
 		return volume.Response{Err: err.Error()}
 	}
 
-	resp = profitbricks.DeleteVolume(d.datacenterId, d.volumes[r.Name].volumeId)
+	resp = profitbricks.DeleteVolume(d.datacenterId, d.volumes[r.Name].VolumeId)
 	if resp.StatusCode > 299 {
 		log.Errorf("failed to create metadata file '%v' for volume '%v'", d.metadataPath, r.Name)
 		return volume.Response{Err: string(resp.Body)}
@@ -270,7 +271,7 @@ func (d *Driver) Path(r volume.Request) volume.Response {
 	defer d.Unlock()
 
 	if state, ok := d.volumes[r.Name]; ok {
-		return volume.Response{Mountpoint: state.mountPoint}
+		return volume.Response{Mountpoint: state.MountPoint}
 	}
 
 	return volume.Response{Err: fmt.Sprintf("Volume %q does not exist", r.Name)}
