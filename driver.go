@@ -7,6 +7,7 @@ import (
 	"github.com/profitbricks/profitbricks-sdk-go"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -27,8 +28,8 @@ type Driver struct {
 	size         int
 	diskType     string
 	utilities    *Utilities
-	m            *sync.Mutex
-	volumes      map[string]*VolumeState
+	sync.RWMutex
+	volumes map[string]*VolumeState
 }
 
 type VolumeState struct {
@@ -57,9 +58,13 @@ func ProfitBricksDriver(utilities *Utilities, args CommandLineArgs) (*Driver, er
 		log.Error(err)
 		return nil, err
 	}
+	serverId = strings.Trim(serverId, "")
+
+	log.Info("Server ID:", strings.ToLower(serverId))
+
 	return &Driver{
 		datacenterId: *args.datacenterId,
-		serverId:     serverId,
+		serverId:     strings.ToLower(serverId),
 		size:         *args.size,
 		diskType:     *args.diskType,
 		volumes:      make(map[string]*VolumeState),
@@ -70,8 +75,8 @@ func ProfitBricksDriver(utilities *Utilities, args CommandLineArgs) (*Driver, er
 }
 
 func (d *Driver) Create(r volume.Request) volume.Response {
-	d.m.Lock()
-	defer d.m.Unlock()
+	d.Lock()
+	defer d.Unlock()
 
 	vol := profitbricks.Volume{
 		Properties: profitbricks.VolumeProperties{
@@ -81,17 +86,32 @@ func (d *Driver) Create(r volume.Request) volume.Response {
 			Name:        fmt.Sprintf("docker-volume-profitbricks:%s", r.Name),
 		},
 	}
-	vol = profitbricks.CreateVolume(d.datacenterId, vol)
+	createresp := profitbricks.CreateVolume(d.datacenterId, vol)
+	log.Info(createresp)
+	if createresp.StatusCode > 299 {
+		log.Errorf("failed to create a volume '%v'", r.Name)
+		return volume.Response{Err: string(vol.Response)}
+	}
 
-	err := d.waitTillProvisioned(vol.Headers.Get("Location"))
+	volumeId := createresp.Id
+	log.Info("Volume provisioned:", vol.Properties.Name)
+
+	err := d.waitTillProvisioned(createresp.Headers.Get("Location"))
 
 	if err != nil {
 		log.Error(err.Error())
 		return volume.Response{Err: err.Error()}
 	}
 
-	vol = profitbricks.AttachVolume(d.datacenterId, d.serverId, vol.Id)
-	err = d.waitTillProvisioned(vol.Headers.Get("Location"))
+	attachResp := profitbricks.AttachVolume(d.datacenterId, d.serverId, volumeId)
+	if attachResp.StatusCode > 299 {
+		log.Errorf("Arguments: %s %s %s", d.datacenterId, d.serverId, vol.Id)
+		log.Errorf("failed to attach a volume '%v', error msg: %q", r.Name, vol.Response)
+		return volume.Response{Err: string(vol.Response)}
+	}
+
+	err = d.waitTillProvisioned(attachResp.Headers.Get("Location"))
+	log.Info("Volume attached:", attachResp.Properties.Name)
 
 	if err != nil {
 		log.Error(err.Error())
@@ -99,6 +119,12 @@ func (d *Driver) Create(r volume.Request) volume.Response {
 	}
 
 	volumeName, err := d.utilities.GetDeviceName()
+	if err != nil {
+		log.Error(err.Error())
+		return volume.Response{Err: err.Error()}
+	}
+
+	err = d.utilities.FormatVolume(volumeName)
 	if err != nil {
 		log.Error(err.Error())
 		return volume.Response{Err: err.Error()}
@@ -137,8 +163,8 @@ func (d *Driver) Create(r volume.Request) volume.Response {
 }
 
 func (d *Driver) Mount(r volume.MountRequest) volume.Response {
-	d.m.Lock()
-	defer d.m.Unlock()
+	d.Lock()
+	defer d.Unlock()
 	err := d.utilities.MountVolume(r.Name, d.volumes[r.Name].mountPoint)
 	if err != nil {
 		log.Error(err.Error())
@@ -149,8 +175,8 @@ func (d *Driver) Mount(r volume.MountRequest) volume.Response {
 }
 
 func (d *Driver) Unmount(r volume.UnmountRequest) volume.Response {
-	d.m.Lock()
-	defer d.m.Unlock()
+	d.Lock()
+	defer d.Unlock()
 
 	err := d.utilities.UnmountVolume(d.volumes[r.Name].mountPoint)
 	if err != nil {
@@ -161,8 +187,8 @@ func (d *Driver) Unmount(r volume.UnmountRequest) volume.Response {
 }
 
 func (d *Driver) List(r volume.Request) volume.Response {
-	d.m.Lock()
-	defer d.m.Unlock()
+	d.Lock()
+	defer d.Unlock()
 	return volume.Response{}
 }
 
@@ -179,8 +205,8 @@ func (d *Driver) Get(r volume.Request) volume.Response {
 }
 
 func (d *Driver) Remove(r volume.Request) volume.Response {
-	d.m.Lock()
-	defer d.m.Unlock()
+	d.Lock()
+	defer d.Unlock()
 
 	resp := profitbricks.DetachVolume(d.datacenterId, d.serverId, d.volumes[r.Name].volumeId)
 	if resp.StatusCode > 299 {
@@ -208,8 +234,8 @@ func (d *Driver) Remove(r volume.Request) volume.Response {
 }
 
 func (d *Driver) Path(r volume.Request) volume.Response {
-	d.m.Lock()
-	defer d.m.Unlock()
+	d.Lock()
+	defer d.Unlock()
 
 	if state, ok := d.volumes[r.Name]; ok {
 		return volume.Response{Mountpoint: state.mountPoint}
@@ -219,7 +245,7 @@ func (d *Driver) Path(r volume.Request) volume.Response {
 }
 
 func (d *Driver) Capabilities(r volume.Request) volume.Response {
-	return volume.Response{Capabilities: volume.Capability{Scope: "local"}}
+	return volume.Response{Capabilities: volume.Capability{Scope: "profitbricks/docker-volume-profitbricks"}}
 }
 
 func (d *Driver) waitTillProvisioned(path string) error {
@@ -228,8 +254,8 @@ func (d *Driver) waitTillProvisioned(path string) error {
 
 	for i := 0; i < waitCount; i++ {
 		request := profitbricks.GetRequestStatus(path)
-		log.Info("Request status: %s", request.Metadata.Status)
-		log.Info("Request status path: %s", path)
+		log.Info("Request status:", request.Metadata.Status)
+		log.Info("Request status path:", path)
 
 		if request.Metadata.Status == "DONE" {
 			return nil

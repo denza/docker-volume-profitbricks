@@ -23,12 +23,13 @@ type CommandLineArgs struct {
 const (
 	DefaultBaseMetadataPath = "/etc/docker/plugins/profitbricks-volume"
 	DefaultBaseMountPath    = "/var/lib/docker-volume-profitbricks"
-	DefaultUnixSocketGroup  = "docker"
+	DefaultUnixSocketGroup  = "/run/docker/plugins/profitbricks.sock"
 	DriverVersion           = "1.0.0"
 )
 
 func main() {
 
+	fmt.Println("Ttttttttttttt")
 	args := parseCommandLineArgs()
 	fmt.Println(*args.profitbricksUsername)
 	fmt.Println(*args.profitbricksPassword)
@@ -47,6 +48,9 @@ func main() {
 	handler := volume.NewHandler(driver)
 
 	//Start listening in a unix socket
+	log.SetLevel(log.InfoLevel)
+
+	log.Info("Listening on", *args.unixSocketGroup)
 	err = handler.ServeUnix(*args.unixSocketGroup, 0)
 	if err != nil {
 		log.Fatalf("failed to bind to the Unix socket: %v", err)
@@ -58,17 +62,19 @@ func main() {
 func parseCommandLineArgs() *CommandLineArgs {
 	args := &CommandLineArgs{}
 
+	fmt.Println("USERNAME", os.Getenv("PROFITBRICKS_USERNAME"))
+	fmt.Println("PASSWORD", os.Getenv("PROFITBRICKS_PASSWORD"))
 	//Credentials
 	args.profitbricksUsername = flag.StringP("profitbricks-username", "u", "", "ProfitBricks user name")
 	args.profitbricksPassword = flag.StringP("profitbricks-password", "p", "", "ProfitBricks user name")
 
 	//ProfitBricks VDC, server and location parameters
-	args.datacenterId = flag.StringP("profitbricks-datacenter", "d", os.Getenv("PROFIT1BRICKS_DATACENTER"), "ProfitBricks Virtual Data Center ID")
+	args.datacenterId = flag.StringP("profitbricks-datacenter", "d", os.Getenv("PROFITBRICKS_DATACENTER"), "ProfitBricks Virtual Data Center ID")
 	args.size = flag.IntP("profitbricks-volume-size", "s", 50, "ProfitBricks Volume size")
 	args.diskType = flag.StringP("profitbricks-disk-type", "t", "HDD", "ProfitBricks Volume type")
 
 	//Mount parameters
-	args.metadataPath = flag.String("metadata-path", DefaultBaseMetadataPath, "the path under which to store volume metadata")
+	args.metadataPath = flag.String("metad§ata-path", DefaultBaseMetadataPath, "the path under which to store volume metadata")
 	args.mountPath = flag.StringP("mount-path", "m", DefaultBaseMountPath, "the path under which to create the volume mount folders")
 	args.unixSocketGroup = flag.StringP("unix-socket-group", "g", DefaultUnixSocketGroup, "the group to assign to the Unix socket file")
 	args.version = flag.BoolP("version", "v", false, "outputs the driver version and exits")
@@ -79,15 +85,24 @@ func parseCommandLineArgs() *CommandLineArgs {
 		os.Exit(0)
 	}
 
-	*args.profitbricksUsername = os.Getenv("PROFITBRICKS_USERNAME")
-	*args.profitbricksPassword = os.Getenv("PROFITBRICKS_PASSWORD")
-	if *args.profitbricksUsername == "" || *args.profitbricksPassword == "" {
-		fmt.Println(fmt.Errorf("Credentials should be provided either using %q, %q or using environment variables %q, %q", "--profitbricks-username", "--profitbricks-password", "PROFITBRICKS_USERNAME", "PROFITBRICKS_PASSWORD"))
+	if os.Getenv("PROFITBRICKS_USERNAME") != "" {
+		*args.profitbricksUsername = os.Getenv("PROFITBRICKS_USERNAME")
+	}
+	if os.Getenv("PROFITBRICKS_PASSWORD") != "" {
+		*args.profitbricksPassword = os.Getenv("PROFITBRICKS_PASSWORD")
+	}
+	if *args.profitbricksUsername == "" {
+		fmt.Println(fmt.Errorf("User name should be provided either using %q or using environment variable %q", "--profitbricks-username", "PROFITBRICKS_USERNAME"))
+		os.Exit(1)
+	}
+
+	if *args.profitbricksPassword == "" {
+		fmt.Println(fmt.Errorf("Password should be provided either using %q or using environment variables %q", "--profitbricks-password", "PROFITBRICKS_PASSWORD"))
 		os.Exit(1)
 	}
 
 	if *args.datacenterId == "" {
-		fmt.Println(fmt.Errorf("Please provide Virtual Data Center Id %q or using environment variable %q", "--profitbricks-datacenter [UUID]", "PROFITBRICKS_DATACENTER"))
+		fmt.Println(fmt.Errorf("Please provide Virtual Datagit  Center Id %q or using environment variable %q", "--profitbricks-datacenter [UUID]", "PROFITBRICKS_DATACENTER"))
 		os.Exit(1)
 	}
 

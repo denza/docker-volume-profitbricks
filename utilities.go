@@ -32,8 +32,8 @@ func (m Utilities) FormatVolume(volumeName string) error {
 
 func (m Utilities) GetServerId() (string, error) {
 	output, err := ioutil.ReadFile("/sys/devices/virtual/dmi/id/product_uuid")
-
-	return string(output), err
+	toReturn := string(output)
+	return toReturn[0:37], err
 }
 
 func (m Utilities) GetDeviceName() (string, error) {
