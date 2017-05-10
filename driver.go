@@ -224,7 +224,7 @@ func (d *Driver) Remove(r volume.Request) volume.Response {
 	d.Lock()
 	defer d.Unlock()
 
-	vol := VolumeState{}
+	vol := &VolumeState{}
 	for _, v := range d.volumes {
 		if v.deviceName == r.Name {
 			vol = v
