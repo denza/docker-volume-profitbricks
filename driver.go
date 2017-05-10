@@ -235,7 +235,9 @@ func (d *Driver) Remove(r volume.Request) volume.Response {
 			break
 		}
 	}
-	log.Infof("Request: %s", r)
+
+	rjson, _ := json.MarshalIndent(r, "", "\t")
+	log.Infof("Request: %s", string(rjson))
 	log.Infof("Removing volume %s ", r.Name)
 	jsn, _ := json.MarshalIndent(d.volumes, "", "\t")
 	log.Info("Volumes: ", string(jsn))
