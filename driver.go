@@ -185,7 +185,7 @@ func (d *Driver) Unmount(r volume.UnmountRequest) volume.Response {
 	defer d.Unlock()
 	log.Info("Unmounting Volume")
 
-	err := d.utilities.UnmountVolume(r.Name)
+	err := d.utilities.UnmountVolume(d.volumes[r.Name].mountPoint)
 	if err != nil {
 		log.Error("Error occured while unmounting volume", err.Error())
 		return volume.Response{Err: err.Error()}
