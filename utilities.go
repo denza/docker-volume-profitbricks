@@ -18,6 +18,8 @@ func NewUtilities() *Utilities {
 }
 
 func (m Utilities) MountVolume(volumeName string, mountpoint string) error {
+	log.Infof("Mounting volume %s at %s", volumeName, mountpoint)
+
 	var stdOut, stdErr bytes.Buffer
 	cmd := exec.Command("lsblk", "-o", "MOUNTPOINT,NAME", "-J")
 	cmd.Stdout = &stdOut
