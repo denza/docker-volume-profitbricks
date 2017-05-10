@@ -69,6 +69,7 @@ func ProfitBricksDriver(utilities *Utilities, args CommandLineArgs) (*Driver, er
 		volumes:      make(map[string]*VolumeState),
 		metadataPath: *args.metadataPath,
 		utilities:    utilities,
+		mountPath:    *args.mountPath,
 	}, nil
 
 }
