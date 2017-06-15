@@ -59,38 +59,125 @@ func (m Utilities) GetServerId() (string, error) {
 	return strings.TrimSpace(toReturn), err
 }
 
-func (m Utilities) GetDeviceName() (string, error) {
-	deviceBaseName := "/dev/%s"
-
-	var stdOut, stdErr bytes.Buffer
-	cmd := exec.Command("lsblk", "-o", "MOUNTPOINT,NAME", "-J")
-	cmd.Stdout = &stdOut
-	cmd.Stderr = &stdErr
-
-	err := cmd.Run()
+func (m Utilities) WriteLsblk(metadataPath string, result Result) error {
+	jsn, err := json.Marshal(result)
 	if err != nil {
-		return "", fmt.Errorf("Error: %s, %s", err.Error(), stdErr.String())
+		return err
 	}
+	ioutil.WriteFile(metadataPath+"metadata.pb", jsn, 0644)
 
-	resultObj := &Result{}
+	return err
+}
 
-	json.Unmarshal(stdOut.Bytes(), resultObj)
+func (m Utilities) getNewLsblk() (Result, error) {
+	cmd := exec.Command("lsblk", "-P", "-o", "NAME,MOUNTPOINT,TYPE")
 
-	for _, b := range resultObj.Blockdevices {
-		if b.Mountpoint == "" && len(b.Children) == 0 {
-			return fmt.Sprintf(deviceBaseName, b.Name), nil
+	data, err := cmd.CombinedOutput()
+	if err != nil {
+		return Result{}, fmt.Errorf("Error: %s", err.Error())
+	}
+	result := []*Device{}
+	devices := strings.Split(string(data), "\n")
+	fmt.Println("DATA", string(data))
+	for _, device := range devices {
+		parsed := ParseDevice(device)
+		if parsed != nil {
+			result = append(result, parsed)
 		}
 	}
-	return "", err
+
+	return Result{Devices: result}, err
+}
+
+func ParseDevice(device string) *Device {
+	raw := strings.Split(device, " ")
+	if len(raw) == 3 {
+		name := strings.Split(raw[0], "=")[1]
+		mountpoint := strings.Split(raw[1], "=")[1]
+		_type := strings.Split(raw[2], "=")[1]
+
+		d := &Device{
+			Name:       strings.Trim(name, `"`),
+			Mountpoint: strings.Trim(mountpoint, `"`),
+			Type:       strings.Trim(_type, `"`),
+		}
+		return d
+	}
+	return nil
+}
+func (m Utilities) getOldLsblk(metadataPath string) (Result, error) {
+	data, err := ioutil.ReadFile(metadataPath + "metadata.pb")
+	if err != nil {
+		return Result{}, err
+	}
+
+	toReturn := Result{}
+	err = json.Unmarshal(data, &toReturn)
+	if err != nil {
+		return Result{}, err
+	}
+
+	return toReturn, err
+}
+
+func (m Utilities) GetDeviceName(metadataPath string) (string, error) {
+	deviceBaseName := "/dev/%s"
+
+	old_list, err := m.getOldLsblk(metadataPath)
+	if err != nil {
+		return "", err
+	}
+
+	new_list, err := m.getNewLsblk()
+
+	diff := difference(old_list, new_list)
+
+	if len(diff.Devices) > 1 {
+		return "", fmt.Errorf("There is more than %s new devices.", len(diff.Devices))
+	}
+
+	return fmt.Sprintf(deviceBaseName, diff.Devices[0].Name), err
 }
 
 type Result struct {
-	Blockdevices []struct {
-		Mountpoint string `json:"mountpoint"`
-		Name       string `json:"name"`
-		Children   []struct {
-			Mountpoint string `json:"mountpoint"`
-			Name       string `json:"name"`
-		} `json:"children,omitempty"`
-	} `json:"blockdevices"`
+	Devices []*Device `json:"blockdevices"`
+}
+
+type Device struct {
+	Name       string
+	Type       string
+	Mountpoint string
+}
+
+func difference(oldV, newV Result) (toreturn Result) {
+	var (
+		lenMin  int
+		longest Result
+	)
+	// Determine the shortest length and the longest slice
+	if len(oldV.Devices) < len(newV.Devices) {
+		lenMin = len(oldV.Devices)
+		longest = newV
+	} else {
+		lenMin = len(newV.Devices)
+		longest = oldV
+	}
+	// compare common indeces
+	for i := 0; i < lenMin; i++ {
+		if newV.Devices[i] == nil {
+			continue
+		}
+
+		if oldV.Devices[i].Name != newV.Devices[i].Name {
+			toreturn.Devices = append(toreturn.Devices, newV.Devices[i])
+		}
+
+	}
+
+	// add indeces not in common
+	for _, v := range longest.Devices[lenMin:] {
+		toreturn.Devices = append(toreturn.Devices, v)
+
+	}
+	return toreturn
 }

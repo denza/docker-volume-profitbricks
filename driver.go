@@ -6,6 +6,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/go-plugins-helpers/volume"
 	"github.com/profitbricks/profitbricks-sdk-go"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -119,7 +120,7 @@ func (d *Driver) Create(r volume.Request) volume.Response {
 		return volume.Response{Err: err.Error()}
 	}
 
-	volumeName, err := d.utilities.GetDeviceName()
+	volumeName, err := d.utilities.GetDeviceName(d.metadataPath)
 	if err != nil {
 		log.Error(err.Error())
 		return volume.Response{Err: err.Error()}
@@ -162,8 +163,13 @@ func (d *Driver) Create(r volume.Request) volume.Response {
 
 	jsn, _ := json.MarshalIndent(d.volumes, "", "\t")
 	log.Info("Volumes: ", string(jsn))
-	log.Info("Volume: ", d.volumes[r.Name])
 
+	jsn, err = json.Marshal(d.volumes[r.Name])
+	if err != nil {
+		return volume.Response{Err: err.Error()}
+	}
+
+	err = ioutil.WriteFile(metadataFilePath, jsn, 0644)
 	return volume.Response{}
 }
 
@@ -231,8 +237,7 @@ func (d *Driver) Remove(r volume.Request) volume.Response {
 
 	vol := &VolumeState{}
 	var key string
-	for k, _ := range d.volumes {
-		v := d.volumes[k]
+	for k, v := range d.volumes {
 		log.Infof("Key %s", k)
 		log.Infof("v.MountPoint == r.Name ", v.MountPoint == r.Name)
 		if v.DeviceName == r.Name {
@@ -313,12 +318,3 @@ func (d *Driver) waitTillProvisioned(path string) error {
 	}
 	return fmt.Errorf("Timeout has expired %s", "")
 }
-
-//
-//func getDeviceName(deviceNumber int64) string {
-//	alphabet := []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"}
-//
-//	name := fmt.Sprintf("vd%s", alphabet[deviceNumber - 1])
-//
-//	return name
-//}
