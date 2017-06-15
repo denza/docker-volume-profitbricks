@@ -80,7 +80,7 @@ func (m Utilities) getNewLsblk() (Result, error) {
 	devices := strings.Split(string(data), "\n")
 	fmt.Println("DATA", string(data))
 	for _, device := range devices {
-		parsed := ParseDevice(device)
+		parsed := parseDevice(device)
 		if parsed != nil {
 			result = append(result, parsed)
 		}
@@ -89,7 +89,7 @@ func (m Utilities) getNewLsblk() (Result, error) {
 	return Result{Devices: result}, err
 }
 
-func ParseDevice(device string) *Device {
+func parseDevice(device string) *Device {
 	raw := strings.Split(device, " ")
 	if len(raw) == 3 {
 		name := strings.Split(raw[0], "=")[1]
