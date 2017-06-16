@@ -155,13 +155,18 @@ func difference(oldV, newV Result) (toreturn Result) {
 		longest Result
 	)
 	// Determine the shortest length and the longest slice
-	if len(oldV.Devices) < len(newV.Devices) {
+	if len(oldV.Devices) == 0 {
+		toreturn.Devices = append(toreturn.Devices, newV.Devices[len(newV.Devices)-1])
+	} else if len(oldV.Devices) < len(newV.Devices) {
 		lenMin = len(oldV.Devices)
 		longest = newV
+
 	} else {
 		lenMin = len(newV.Devices)
 		longest = oldV
+
 	}
+
 	// compare common indeces
 	for i := 0; i < lenMin; i++ {
 		if newV.Devices[i] == nil {
