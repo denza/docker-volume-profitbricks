@@ -123,10 +123,10 @@ func (m Utilities) getOldLsblk(metadataPath string) (Result, error) {
 func (m Utilities) GetDeviceName(metadataPath string) (string, error) {
 	deviceBaseName := "/dev/%s"
 
-	old_list, err := m.getOldLsblk(metadataPath)
-	if err != nil {
-		return "", err
-	}
+	old_list, _ := m.getOldLsblk(metadataPath)
+	//if err != nil {
+	//	return "", err
+	//}
 
 	new_list, err := m.getNewLsblk()
 
