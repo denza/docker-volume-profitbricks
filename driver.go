@@ -6,7 +6,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/go-plugins-helpers/volume"
 	"github.com/profitbricks/profitbricks-sdk-go"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -88,6 +87,13 @@ func (d *Driver) Create(r volume.Request) volume.Response {
 			Name:        fmt.Sprintf("docker-volume-profitbricks:%s", r.Name),
 		},
 	}
+
+	result, err := d.utilities.getNewLsblk()
+	if err != nil {
+		log.Error(err.Error())
+		return volume.Response{Err: err.Error()}
+	}
+
 	createresp := profitbricks.CreateVolume(d.datacenterId, vol)
 	log.Info(createresp)
 	if createresp.StatusCode > 299 {
@@ -98,7 +104,7 @@ func (d *Driver) Create(r volume.Request) volume.Response {
 	volumeId := createresp.Id
 	log.Info("Volume provisioned:", vol.Properties.Name)
 
-	err := d.waitTillProvisioned(createresp.Headers.Get("Location"))
+	err = d.waitTillProvisioned(createresp.Headers.Get("Location"))
 
 	if err != nil {
 		log.Error(err.Error())
@@ -169,7 +175,8 @@ func (d *Driver) Create(r volume.Request) volume.Response {
 		return volume.Response{Err: err.Error()}
 	}
 
-	err = ioutil.WriteFile(metadataFilePath, jsn, 0644)
+	d.utilities.WriteLsblk(metadataFilePath, result)
+	//err = d.utilities.WriteFile(metadataFilePath, jsn, 0644)
 	return volume.Response{}
 }
 
