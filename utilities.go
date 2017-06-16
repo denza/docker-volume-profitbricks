@@ -60,7 +60,7 @@ func (m Utilities) GetServerId() (string, error) {
 }
 
 func (m Utilities) WriteLsblk(metadataPath string, result Result) error {
-	jsn, err := json.Marshal(result)
+	jsn, err := json.MarshalIndent(result, "\t", "\t")
 	if err != nil {
 		return err
 	}
@@ -78,7 +78,6 @@ func (m Utilities) getNewLsblk() (Result, error) {
 	}
 	result := []*Device{}
 	devices := strings.Split(string(data), "\n")
-	fmt.Println("DATA", string(data))
 	for _, device := range devices {
 		parsed := parseDevice(device)
 		if parsed != nil {
