@@ -284,6 +284,11 @@ func (d *Driver) Remove(r volume.Request) volume.Response {
 	}
 
 	delete(d.volumes, key)
+	metadataFilePath := filepath.Join(d.metadataPath, r.Name)
+	err = d.utilities.RemoveMetaDataFile(metadataFilePath)
+	if err != nil {
+		return volume.Response{Err: err.Error()}
+	}
 
 	return volume.Response{}
 }

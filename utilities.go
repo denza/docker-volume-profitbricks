@@ -6,6 +6,7 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -119,6 +120,10 @@ func (m Utilities) getOldLsblk(metadataPath string) (Result, error) {
 	return toReturn, err
 }
 
+func (m Utilities) RemoveMetaDataFile(metadataFilePath string) error {
+	return os.Remove(metadataFilePath)
+
+}
 func (m Utilities) GetDeviceName(metadataPath string) (string, error) {
 	deviceBaseName := "/dev/%s"
 
