@@ -1,0 +1,11 @@
+[Unit]
+Description=Docker Volume Driver for ProfitBricks
+Before=docker.service
+After=network.target
+Requires=docker.service
+
+[Service]
+ExecStart=/root/go/src/github.com/StackPointCloud/docker-volume-profitbricks/docker-volume-profitbricks -d [datacenter_uuid] -u [profitbricks_username] -p [profitbricks_password]
+
+[Install]
+WantedBy=multi-user.target
