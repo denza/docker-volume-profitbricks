@@ -81,3 +81,9 @@ sudo systemctl start profitbricks.service
 # enable automated startup on reboot
 sudo systemctl enable profitbricks.service
 ```
+
+#Known issues
+
+- Metadata stored in a wrong place
+- Metadata file name is off 
+- Instructions incomplete

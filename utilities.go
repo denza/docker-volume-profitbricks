@@ -64,7 +64,7 @@ func (m Utilities) WriteLsblk(metadataPath string, result Result) error {
 	if err != nil {
 		return err
 	}
-	ioutil.WriteFile(metadataPath+"metadata.pb", jsn, 0644)
+	ioutil.WriteFile(metadataPath, jsn, 0644)
 
 	return err
 }
@@ -105,7 +105,7 @@ func parseDevice(device string) *Device {
 	return nil
 }
 func (m Utilities) getOldLsblk(metadataPath string) (Result, error) {
-	data, err := ioutil.ReadFile(metadataPath + "metadata.pb")
+	data, err := ioutil.ReadFile(metadataPath)
 	if err != nil {
 		return Result{}, err
 	}
