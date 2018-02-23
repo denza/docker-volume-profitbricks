@@ -108,7 +108,7 @@ func parseCommandLineArgs(mountUtil *Utilities) *CommandLineArgs {
 	if *args.profitbricksUsername == "" && *args.credentialFilePath != "" {
 		*args.profitbricksUsername, err = mountUtil.GetConfValS(*args.credentialFilePath, "username")
 		if err != nil {
-			fmt.Println(err.Error)
+			fmt.Println(err.Error())
 			os.Exit(1)
 		}
 	}
@@ -116,7 +116,7 @@ func parseCommandLineArgs(mountUtil *Utilities) *CommandLineArgs {
 	if *args.profitbricksPassword == "" && *args.credentialFilePath != "" {
 		*args.profitbricksPassword, err = mountUtil.GetConfValS(*args.credentialFilePath, "password")
 		if err != nil {
-			fmt.Println(err.Error)
+			fmt.Println(err.Error())
 			os.Exit(1)
 		}
 	}

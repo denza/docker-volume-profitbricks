@@ -34,11 +34,11 @@ type Driver struct {
 	diskType     string
 	utilities    *Utilities
 	sync.RWMutex
-	volumes map[string]*VolumeState
+	volumes map[string]*volumeState
 }
 
-//VolumeState represents volume state in the  metadata.
-type VolumeState struct {
+//VolumeState represents a volume state in the  metadata.
+type volumeState struct {
 	VolumeID   string
 	MountPoint string
 	DeviceName string
@@ -73,7 +73,7 @@ func ProfitBricksDriver(utilities *Utilities, args CommandLineArgs) (*Driver, er
 		serverID:     strings.ToLower(serverID),
 		size:         *args.size,
 		diskType:     *args.diskType,
-		volumes:      make(map[string]*VolumeState),
+		volumes:      make(map[string]*volumeState),
 		metadataPath: *args.metadataPath,
 		utilities:    utilities,
 		mountPath:    *args.mountPath,
@@ -258,7 +258,7 @@ func (d *Driver) Create(r volume.Request) volume.Response {
 		return volume.Response{Err: err.Error()}
 	}
 
-	d.volumes[r.Name] = &VolumeState{
+	d.volumes[r.Name] = &volumeState{
 		VolumeID:   volumeID,
 		MountPoint: volumePath,
 		DeviceName: volumeName,
@@ -278,6 +278,16 @@ func (d *Driver) Create(r volume.Request) volume.Response {
 	if detachResp.StatusCode > 299 {
 		log.Errorf("failed to detach volume '%v' on server '%v'", volumeID, d.serverID)
 		return volume.Response{Err: string(detachResp.Body)}
+	}
+
+	if detachResp.StatusCode > 299 {
+		log.Errorf("failed to detach volume '%s' from server '%s'", volumeID, d.serverID)
+		return volume.Response{Err: string(detachResp.Body)}
+	}
+
+	err = d.waitTillProvisioned(detachResp.Headers.Get("Location"))
+	if err != nil {
+		return volume.Response{Err: err.Error()}
 	}
 
 	return volume.Response{}
@@ -337,6 +347,16 @@ func (d *Driver) Unmount(r volume.UnmountRequest) volume.Response {
 		return volume.Response{Err: string(detachResp.Body)}
 	}
 
+	if detachResp.StatusCode > 299 {
+		log.Errorf("failed to detach volume '%s' from server '%s'", vol.VolumeID, d.serverID)
+		return volume.Response{Err: string(detachResp.Body)}
+	}
+
+	err = d.waitTillProvisioned(detachResp.Headers.Get("Location"))
+	if err != nil {
+		return volume.Response{Err: err.Error()}
+	}
+
 	return volume.Response{}
 }
 
@@ -377,7 +397,7 @@ func (d *Driver) Remove(r volume.Request) volume.Response {
 	defer d.Unlock()
 	log.Info("Iterating throug map")
 
-	vol := &VolumeState{}
+	vol := &volumeState{}
 	var key string
 	for k, v := range d.volumes {
 		log.Infof("Key %s", k)
@@ -389,13 +409,6 @@ func (d *Driver) Remove(r volume.Request) volume.Response {
 		}
 	}
 
-	rjson, _ := json.MarshalIndent(r, "", "\t")
-	log.Debugf("Request: %s", string(rjson))
-	log.Debugf("Removing volume %s ", r.Name)
-	jsn, _ := json.MarshalIndent(d.volumes, "", "\t")
-	log.Debug("Volumes: ", string(jsn))
-	log.Debug("Volume: ", vol)
-	log.Infof("Removing volume with parameters: %s, %s, %s", d.datacenterID, d.serverID, vol.VolumeID)
 	//Try to detach the volume, so it could be deleted.
 	resp := profitbricks.DetachVolume(d.datacenterID, d.serverID, vol.VolumeID)
 	alreadyRemoved := resp.StatusCode == 404
@@ -514,10 +527,10 @@ func (d *Driver) findVolumeByName(volumeName string) (string, error) {
 
 //findVolumeByID is trying to discover a volume by volumeId.
 func (d *Driver) findVolumeByID(volumeID string, vol *profitbricks.Volume, isNewVolume *bool, shouldDoFormatting *bool, r volume.Request) (string, error) {
-	if len(volumeID) != 36 {
+	if !d.utilities.IsUUID(volumeID) {
 		volumeID = r.Options["volume_id"]
 	}
-	if len(volumeID) == 36 {
+	if d.utilities.IsUUID(volumeID) {
 		log.Info("Using provided volume_id: %s", volumeID)
 
 		volResp := profitbricks.GetVolume(d.datacenterID, volumeID)
@@ -543,6 +556,8 @@ func (d *Driver) findVolumeByID(volumeID string, vol *profitbricks.Volume, isNew
 
 		*isNewVolume = false
 		*shouldDoFormatting = false
+	} else {
+		return "", fmt.Errorf("Value %s provided as volume id is not valid uuid", volumeID)
 	}
 	return volumeID, nil
 }
@@ -562,7 +577,7 @@ func (d *Driver) findSnapshotByName(r volume.Request) (string, error) {
 					snapshotID = v.Id
 				}
 			}
-			if len(snapshotID) != 36 {
+			if !d.utilities.IsUUID(snapshotID) {
 				return "", fmt.Errorf("Snapshot with name %s could not be found", snapshotName)
 			}
 		} else {
@@ -576,10 +591,10 @@ func (d *Driver) findSnapshotByName(r volume.Request) (string, error) {
 
 //findSnapshotByID is trying to discover a snapshot by snapshotId.
 func (d *Driver) findSnapshotByID(snapshotID string, volumeID string, vol *profitbricks.Volume, isNewVolume *bool, shouldDoFormatting *bool, r volume.Request) (string, error) {
-	if len(snapshotID) != 36 {
+	if d.utilities.IsUUID(snapshotID) {
 		snapshotID = r.Options["snapshot_id"]
 	}
-	if len(volumeID) != 36 && len(snapshotID) == 36 {
+	if !d.utilities.IsUUID(volumeID) && d.utilities.IsUUID(snapshotID) {
 		log.Info("Using provided shanpshot: ", snapshotID)
 
 		snapshotResp := profitbricks.GetSnapshot(snapshotID)
@@ -621,7 +636,7 @@ func (d *Driver) initVolumesFromMetadata() error {
 }
 
 //initVolume init volume from the API.
-func (d *Driver) initVolume(name string) (*VolumeState, error) {
+func (d *Driver) initVolume(name string) (*volumeState, error) {
 	volumeID, _ := d.findVolumeByName(name)
 	if volumeID == "" {
 		log.Errorf("Volume '%v' not found", name)
@@ -638,7 +653,7 @@ func (d *Driver) initVolume(name string) (*VolumeState, error) {
 
 	d.utilities.UnmountVolume(d.getVolumeDevicePath(volumeID))
 
-	volumeState := &VolumeState{
+	volumeState := &volumeState{
 		VolumeID:   volumeID,
 		MountPoint: volumePath,
 	}

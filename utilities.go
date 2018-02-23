@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"time"
 
@@ -159,22 +160,6 @@ func parseDevice(device string) *Device {
 	return nil
 }
 
-//getOldLsblk is trying to get an old lsbkl.
-func (m Utilities) getOldLsblk(metadataPath string) (Result, error) {
-	data, err := ioutil.ReadFile(metadataPath)
-	if err != nil {
-		return Result{}, err
-	}
-
-	toReturn := Result{}
-	err = json.Unmarshal(data, &toReturn)
-	if err != nil {
-		return Result{}, err
-	}
-
-	return toReturn, err
-}
-
 //RemoveMetaDataFile is removing a metadata from a file.
 func (m Utilities) RemoveMetaDataFile(metadataFilePath string) error {
 	return os.Remove(metadataFilePath)
@@ -214,6 +199,12 @@ func (m Utilities) GetDeviceName() (string, error) {
 	return fmt.Sprintf(deviceBaseName, deviceName), err
 }
 
+//IsUUID validates if a provided value is a uuid
+func (m Utilities) IsUUID(value string) bool {
+	var validUUID = regexp.MustCompile(`^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$`)
+	return validUUID.MatchString(value)
+}
+
 //Result represents an array of devices.
 type Result struct {
 	Devices []*Device `json:"blockdevices"`
@@ -225,40 +216,4 @@ type Device struct {
 	Type       string
 	Mountpoint string
 	UUID       string
-}
-
-//difference is comparing devices.
-func difference(oldV, newV Result) (toreturn Result) {
-	var (
-		lenMin  int
-		longest Result
-	)
-	// Determine the shortest length and the longest slice
-	if len(oldV.Devices) == 0 {
-		toreturn.Devices = append(toreturn.Devices, newV.Devices[len(newV.Devices)-1])
-	} else if len(oldV.Devices) < len(newV.Devices) {
-		lenMin = len(oldV.Devices)
-		longest = newV
-	} else {
-		lenMin = len(newV.Devices)
-		longest = oldV
-	}
-
-	// compare common indeces
-	for i := 0; i < lenMin; i++ {
-		if newV.Devices[i] == nil {
-			continue
-		}
-
-		if oldV.Devices[i].Name != newV.Devices[i].Name {
-			toreturn.Devices = append(toreturn.Devices, newV.Devices[i])
-		}
-	}
-
-	// add indeces not in common
-	for _, v := range longest.Devices[lenMin:] {
-		toreturn.Devices = append(toreturn.Devices, v)
-
-	}
-	return toreturn
 }
