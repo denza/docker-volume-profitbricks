@@ -556,9 +556,8 @@ func (d *Driver) findVolumeByID(volumeID string, vol *profitbricks.Volume, isNew
 
 		*isNewVolume = false
 		*shouldDoFormatting = false
-	} else {
-		return "", fmt.Errorf("Value %s provided as volume id is not valid uuid", volumeID)
 	}
+
 	return volumeID, nil
 }
 
