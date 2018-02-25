@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
-	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/creamdog/gonfig"
@@ -166,37 +165,28 @@ func (m Utilities) RemoveMetaDataFile(metadataFilePath string) error {
 }
 
 //GetDeviceName is getting a device name.
-func (m Utilities) GetDeviceName() (string, error) {
+func (m Utilities) GetDeviceName() (string, bool, error) {
 	deviceBaseName := "/dev/%s"
 	deviceName := ""
 	deviceCounter := 0
-	tryCounter := 0
 	newList, err := m.getNewLsblk()
 
-	for tryCounter < 20 && deviceCounter == 0 {
-		for _, device := range newList.Devices {
-			// Condition explainations:
-			// Every attached volume is type of a disk
-			// vda is reserved for OS based disk
-			// By default UUID is not assign to a attached volume, and we will make sure to do that for each of them
-			if device.Type == "disk" && device.Name != "vda" && len(device.UUID) == 0 {
-				deviceName = device.Name
-				deviceCounter++
-			}
+	for _, device := range newList.Devices {
+		// Condition explainations:
+		// Every attached volume is type of a disk
+		// vda is reserved for OS based disk
+		// By default UUID is not assign to a attached volume, and we will make sure to do that for each of them
+		if device.Type == "disk" && device.Name != "vda" && len(device.UUID) == 0 {
+			deviceName = device.Name
+			deviceCounter++
 		}
-		if deviceCounter > 1 {
-			return "", fmt.Errorf("There is more than %d new devices", deviceCounter)
-		}
-
-		if deviceCounter == 0 && tryCounter == 20 {
-			return "", fmt.Errorf("No device found")
-		}
-		log.Debugf("Trying to resolve device name. Attempt number %d", tryCounter)
-		tryCounter++
-		time.Sleep(3 * time.Second)
+	}
+	if deviceCounter > 1 {
+		return "", false, fmt.Errorf("There is more than %d new devices", deviceCounter)
 	}
 
-	return fmt.Sprintf(deviceBaseName, deviceName), err
+	foundDevice := "" != deviceName
+	return fmt.Sprintf(deviceBaseName, deviceName), foundDevice, err
 }
 
 //IsUUID validates if a provided value is a uuid

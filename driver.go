@@ -210,26 +210,28 @@ func (d *Driver) Create(r volume.Request) volume.Response {
 
 	//Sets a metadata
 	log.Info("Getting device name from : ", d.metadataPath)
-	volumeName, err := d.utilities.GetDeviceName()
+	volumeName, foundDevice, err := d.utilities.GetDeviceName()
 	if err != nil {
 		log.Error(err.Error())
 		return volume.Response{Err: err.Error()}
 	}
 
-	//Sets a partition
-	if shouldDoFormatting {
-		log.Info("Starting formatting: VolumeName: ", volumeName, " VolumeId: ", volumeID)
-		err = d.utilities.FormatVolume(volumeName, volumeID)
-		if err != nil {
-			log.Error(err.Error())
-			return volume.Response{Err: err.Error()}
-		}
-	} else {
-		log.Info("Adjusting volume: VolumeName: ", volumeName, " VolumeId: ", volumeID)
-		err = d.utilities.TuneVolume(volumeName, volumeID)
-		if err != nil {
-			log.Error(err.Error())
-			return volume.Response{Err: err.Error()}
+	if foundDevice {
+		//Sets a partition
+		if shouldDoFormatting {
+			log.Info("Starting formatting: VolumeName: ", volumeName, " VolumeId: ", volumeID)
+			err = d.utilities.FormatVolume(volumeName, volumeID)
+			if err != nil {
+				log.Error(err.Error())
+				return volume.Response{Err: err.Error()}
+			}
+		} else {
+			log.Info("Adjusting volume: VolumeName: ", volumeName, " VolumeId: ", volumeID)
+			err = d.utilities.TuneVolume(volumeName, volumeID)
+			if err != nil {
+				log.Error(err.Error())
+				return volume.Response{Err: err.Error()}
+			}
 		}
 	}
 
