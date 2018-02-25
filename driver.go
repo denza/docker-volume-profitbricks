@@ -131,7 +131,7 @@ func (d *Driver) Create(r volume.Request) volume.Response {
 		return volume.Response{Err: err.Error()}
 	}
 
-	volumeID, err = d.findVolumeByID(volumeID, &vol, &isNewVolume, &shouldDoFormatting, r)
+	volumeID, isNewVolume, shouldDoFormatting, err = d.findVolumeByID(volumeID, &vol, isNewVolume, shouldDoFormatting, r)
 	if err != nil {
 		log.Error(err.Error())
 		return volume.Response{Err: err.Error()}
@@ -144,7 +144,7 @@ func (d *Driver) Create(r volume.Request) volume.Response {
 		return volume.Response{Err: err.Error()}
 	}
 
-	snapshotID, err = d.findSnapshotByID(snapshotID, volumeID, &vol, &isNewVolume, &shouldDoFormatting, r)
+	snapshotID, isNewVolume, shouldDoFormatting, err = d.findSnapshotByID(snapshotID, volumeID, &vol, isNewVolume, shouldDoFormatting, r)
 	if err != nil {
 		log.Error(err.Error())
 		return volume.Response{Err: err.Error()}
@@ -528,16 +528,18 @@ func (d *Driver) findVolumeByName(volumeName string) (string, error) {
 }
 
 //findVolumeByID is trying to discover a volume by volumeId.
-func (d *Driver) findVolumeByID(volumeID string, vol *profitbricks.Volume, isNewVolume *bool, shouldDoFormatting *bool, r volume.Request) (string, error) {
+func (d *Driver) findVolumeByID(volumeID string, vol *profitbricks.Volume, isNewVolume bool, shouldDoFormatting bool, r volume.Request) (string, bool, bool, error) {
+	log.Debugf("Using volumeID before the options. Value: %s", volumeID)
 	if !d.utilities.IsUUID(volumeID) {
 		volumeID = r.Options["volume_id"]
+		log.Debugf("Using volumeID from the options. Value: %s", volumeID)
 	}
 	if d.utilities.IsUUID(volumeID) {
-		log.Info("Using provided volume_id: %s", volumeID)
+		log.Infof("Using provided volume_id: %s", volumeID)
 
 		volResp := profitbricks.GetVolume(d.datacenterID, volumeID)
 		if volResp.StatusCode != 200 {
-			return "", fmt.Errorf("Volume with uuid %s could not be found", volumeID)
+			return "", isNewVolume, shouldDoFormatting, fmt.Errorf("Volume with uuid %s could not be found", volumeID)
 		}
 		log.Info(volResp)
 		//Adding docker suffix tag in case it is not added
@@ -549,18 +551,18 @@ func (d *Driver) findVolumeByID(volumeID string, vol *profitbricks.Volume, isNew
 
 			volEditResp := profitbricks.PatchVolume(d.datacenterID, volumeID, volProps)
 			if volEditResp.StatusCode != 202 {
-				return "", fmt.Errorf("Volume with uuid %s could not be updated", volumeID)
+				return "", isNewVolume, shouldDoFormatting, fmt.Errorf("Volume with uuid %s could not be updated", volumeID)
 			}
 
 			vol.Properties.Name = volEditResp.Properties.Name
 
 		}
 
-		*isNewVolume = false
-		*shouldDoFormatting = false
+		isNewVolume = false
+		shouldDoFormatting = false
 	}
 
-	return volumeID, nil
+	return volumeID, isNewVolume, shouldDoFormatting, nil
 }
 
 //findSnapshotByName is trying to discover a snapshot by name.
@@ -591,8 +593,8 @@ func (d *Driver) findSnapshotByName(r volume.Request) (string, error) {
 }
 
 //findSnapshotByID is trying to discover a snapshot by snapshotId.
-func (d *Driver) findSnapshotByID(snapshotID string, volumeID string, vol *profitbricks.Volume, isNewVolume *bool, shouldDoFormatting *bool, r volume.Request) (string, error) {
-	if d.utilities.IsUUID(snapshotID) {
+func (d *Driver) findSnapshotByID(snapshotID string, volumeID string, vol *profitbricks.Volume, isNewVolume bool, shouldDoFormatting bool, r volume.Request) (string, bool, bool, error) {
+	if !d.utilities.IsUUID(volumeID) && d.utilities.IsUUID(snapshotID) {
 		snapshotID = r.Options["snapshot_id"]
 	}
 	if !d.utilities.IsUUID(volumeID) && d.utilities.IsUUID(snapshotID) {
@@ -600,16 +602,16 @@ func (d *Driver) findSnapshotByID(snapshotID string, volumeID string, vol *profi
 
 		snapshotResp := profitbricks.GetSnapshot(snapshotID)
 		if snapshotResp.StatusCode != 200 {
-			return "", fmt.Errorf("Snapshot with uuid %s could not be found", snapshotID)
+			return "", isNewVolume, shouldDoFormatting, fmt.Errorf("Snapshot with uuid %s could not be found", snapshotID)
 		}
 		log.Info(snapshotResp)
 		vol.Properties.Image = snapshotID
 		vol.Properties.LicenceType = ""
-		*isNewVolume = true
-		*shouldDoFormatting = false
+		isNewVolume = true
+		shouldDoFormatting = false
 	}
 
-	return snapshotID, nil
+	return snapshotID, isNewVolume, shouldDoFormatting, nil
 }
 
 //initVolumesFromMetadata init volumes from the meta data.

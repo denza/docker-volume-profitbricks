@@ -201,7 +201,7 @@ func (m Utilities) GetDeviceName() (string, error) {
 
 //IsUUID validates if a provided value is a uuid
 func (m Utilities) IsUUID(value string) bool {
-	var validUUID = regexp.MustCompile(`^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$`)
+	var validUUID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 	return validUUID.MatchString(value)
 }
 
