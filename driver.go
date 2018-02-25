@@ -319,7 +319,9 @@ func (d *Driver) Mount(r volume.MountRequest) volume.Response {
 		return volume.Response{Err: err.Error()}
 	}
 
-	return volume.Response{}
+	return volume.Response{
+		Mountpoint: vol.MountPoint,
+	}
 }
 
 //getVolumeDevicePath returning device path with uuid.
